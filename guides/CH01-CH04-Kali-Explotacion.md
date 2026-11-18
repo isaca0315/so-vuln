@@ -1,6 +1,6 @@
 # Kernel CTF Lab (Kali) — CH01 a CH04: levantar el entorno y lograr la explotación
 
-Documento para estudiantes. Cubre los retos **funcionados/logrados en Kali** (laboratorio Docker `~/kernel-ctf-lab-docker/`, kernel **Linux 6.1.75** en QEMU): **CH01, CH02, CH03 y CH04**. **CH05 se descartó**.
+Documento para estudiantes. Cubre los retos **disponibles y logrados en Kali** (laboratorio Docker `~/kernel-ctf-lab-docker/`, kernel **Linux 6.1.75** en QEMU): **CH01, CH02, CH03 y CH04**.
 
 ## Estado de los retos en Kali
 
@@ -10,9 +10,8 @@ Documento para estudiantes. Cubre los retos **funcionados/logrados en Kali** (la
 | **CH02 — Echo Chamber v2** | `/dev/echo2` — info leak de stack + stack overflow (KASLR leak + ROP) | Nivel 2 (SMEP + KASLR) | **Funcionó / resuelto** | `FLAG{change_me_ch02}` |
 | **CH03 — Object Store** | `/dev/objstore` — UAF (dangling pointer, kmalloc-1024/tty_struct) | Nivel 3 (SMEP + KASLR + SMAP) | **Funcionó / resuelto** | `FLAG{change_me_ch03}` |
 | **CH04 — Secure Allocator** | `/dev/secalloc` — integer overflow → heap OOB R/W (`msg_msg`) | Nivel 4 (SMEP + KASLR + SMAP + canarios) | **Funcionó / flag recuperada** | `FLAG{change_me_ch04}` |
-| **CH05 — Concurrent Log** | `/dev/conclog` — race/refcount no atómico → double free | Nivel 4 | **Descartado** | — |
 
-> Las flags mostradas son las del initramfs del laboratorio (placeholders). Símbolos de referencia en `linux-6.1.75/System.map` (direcciones *link-time*; con KASLR se suma un slide por arranque).
+> Retos disponibles en este laboratorio: **CH01–CH04**. Las flags mostradas son las del initramfs del laboratorio (placeholders). Símbolos de referencia en `linux-6.1.75/System.map` (direcciones *link-time*; con KASLR se suma un slide por arranque).
 
 ---
 
@@ -32,7 +31,7 @@ ls
 docker compose ps
 ```
 
-Servicios definidos: `kali`, `ch01`–`ch05`. Puertos GDB (host → contenedor/QEMU `:1234`): `12341`–`12345`.
+Servicios definidos para los retos disponibles: `ch01`–`ch04` (además de `kali`). Puertos GDB (host → contenedor/QEMU `:1234`): `12341`–`12344`.
 
 ---
 

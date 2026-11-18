@@ -1,6 +1,13 @@
 # kernel-ctf-lab
 
-> 5 vulnerable kernel modules. Progressive mitigations. Realistic bugs. Get root.
+> 4 vulnerable kernel modules. Progressive mitigations. Realistic bugs. Get root.
+
+## Estado del laboratorio
+
+- **Retos disponibles:** CH01, CH02, CH03, CH04.
+- **Funcionan en Kali (entorno Docker/QEMU, Linux 6.1.75):** CH01, CH02, CH03 y CH04 (flags de laboratorio obtenidas).
+- **Guía para estudiantes (Kali):** [`guides/CH01-CH04-Kali-Explotacion.md`](guides/CH01-CH04-Kali-Explotacion.md)
+- **Presentación (vulnerabilidades CH01–CH04):** [`guides/Vulnerabilidades-Kernel-CTF-CH01-CH04.pptx`](guides/Vulnerabilidades-Kernel-CTF-CH01-CH04.pptx)
 
 ## Rules
 
@@ -9,22 +16,21 @@
 - Full source code is in `src/`. Read it, reverse the `.ko`, or both -- your call.
 - Use whatever tools you want: Ghidra, IDA, GDB, pwntools, ropper -- anything goes.
 - Each challenge has a **recommended level** where its intended technique applies. You can also run any challenge at any level for extra practice.
-- Each challenge builds on the previous one. ROP (CH02) is reused in CH03 (stack pivot), then the data-only approach (CH04) shows you don't always need it. CH05 ties everything together.
+- Each challenge builds on the previous one. ROP (CH02) is reused in CH03 (stack pivot), and CH04 introduces a data-only approach.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/0xCD4/kernel-ctf-lab.git
-cd kernel-ctf-lab
-
-# download pre-built binaries from Releases
-# https://github.com/0xCD4/kernel-ctf-lab/releases
+git clone https://github.com/isaca0315/so-vuln.git
+cd so-vuln
 
 sudo apt install -y qemu-system-x86 gdb gcc busybox-static
 
 cd challenges/ch01-echo-chamber
 ./run.sh 0
 ```
+
+> En el despliegue Kali/Docker del laboratorio, sigue la guía: [`guides/CH01-CH04-Kali-Explotacion.md`](guides/CH01-CH04-Kali-Explotacion.md).
 
 ## Kernel
 
@@ -47,10 +53,9 @@ Or run `./build.sh` to build everything from scratch.
 The challenges are designed as a coherent curriculum. Each one introduces exactly one new exploitation concept while building on everything learned before.
 
 ```
-CH01  →  CH02  →  CH03  →  CH04  →  CH05
- │        │        │        │        │
- │        │        │        │        └─ + race conditions, + KPTI bypass
- │        │        │        └─ + integer bugs, + data-only attacks, + canaries
+CH01  →  CH02  →  CH03  →  CH04
+ │        │        │        │
+ │        │        │        └─ + integer bugs, + heap OOB, + data-only attacks, + canaries
  │        │        └─ + heap exploitation, + SMAP bypass (stack pivot)
  │        └─ + kernel ROP, + KASLR bypass, + SMEP
  └─ ret2usr fundamentals
@@ -61,7 +66,7 @@ CH01  →  CH02  →  CH03  →  CH04  →  CH05
 This lab has two exploit styles:
 
 - CH01-CH03: control flow attacks (stack overflow, kernel ROP, stack pivot with SMAP).
-- CH04-CH05: data-only attacks (integer/race bugs, heap corruption, privilege gain without ROP).
+- CH04: data-only attack (integer/heap bug, heap corruption, privilege gain without ROP).
 
 CH02 is early on purpose. You learn how to return to user mode one time, then reuse it later.
 
@@ -78,7 +83,6 @@ If you want a simple path, use one of these tracks:
 ### Track B - Data only
 
 1. **CH04**: integer overflow to heap OOB and `modprobe_path`
-2. **CH05**: refcount race, double free, direct `cred` overwrite
 
 The default order still works. These tracks are optional.
 
@@ -145,23 +149,6 @@ Create an object, delete it, then read through the stale pointer. Objects are 10
 <summary>Hint</summary>
 
 The driver adds a 64-byte header to your requested size using 32-bit arithmetic. What happens when the sum wraps past `0xFFFFFFFF`? A tiny allocation with a huge recorded data size. Use `msgsnd`/`msgrcv` to groom the heap with `msg_msg` structures. Corrupt an adjacent `msg_msg` to build an arbitrary read. Find and overwrite `modprobe_path` - then trigger it with an unknown binary format. Stack canaries make ROP expensive; this challenge rewards a data-only approach.
-</details>
-
----
-
-### ch05-concurrent-log -- race conditions
-
-- **Device:** `/dev/conclog`
-- **Interface:** `ioctl()` -- 4 commands (alloc / read / write / put)
-- **Source:** `src/ch05-concurrent-log/vuln_conclog.c`
-- **Note:** Requires multi-core. All levels run with `-smp 2`.
-- **Level:** 4 (all mitigations)
-- **New concept:** Non-atomic refcount → double free, `userfaultfd`/FUSE for race stabilization, `pipe_buffer` spray, direct cred overwrite
-
-<details>
-<summary>Hint</summary>
-
-The reference count is a plain `int`, not `atomic_t`. The decrement path uses a shared (read) lock - two CPUs can enter simultaneously. Race two threads on the put command: both read refcount=1, both decrement, both free. Use `userfaultfd` to widen the window. After the double free, spray with `pipe_buffer` structs: the log entry is kmalloc-192, and a pipe with 4 pages (`fcntl(F_SETPIPE_SZ, 4 * 4096)`, a 160-byte array in kmalloc-192) reclaims it. Fill every buffer with `write()`. Pipe rings are powers of two, so other sizes land in other caches. The `pipe_buffer->ops` pointer leaks the kernel base. Corrupt `pipe_buffer->page` for arbitrary read/write, then walk the task list to find your cred struct and zero out uid/gid. This is different from CH04: there you targeted `modprobe_path` (a global); here you target your process's `cred` struct (on the heap).
 </details>
 
 ## Mitigation Levels
@@ -268,10 +255,6 @@ sudo apt install -y gcc make flex bison bc libelf-dev libssl-dev \
 ./build.sh initramfs  # initramfs only (needs compiled .ko files)
 ```
 
-## Notes on realism and variety
-
-- CH04 and CH05 can look similar because both can end in data-only privilege escalation. But they use different bug types and different targets (`msg_msg` + global target vs race + `pipe_buffer` + heap `cred` target).
-- Future updates can add harder heap grooming ideas, such as stronger refcount patterns and less direct dangling pointers.
 
 ## If your PR does not show the latest README
 
